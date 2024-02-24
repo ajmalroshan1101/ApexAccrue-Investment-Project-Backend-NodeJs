@@ -1,12 +1,14 @@
-const UserMongoose = require("../models/UserSchema");
-
 const bcrypt = require("bcrypt");
+
+const jwt = require("jsonwebtoken");
 
 const otp = require("../utility/twilio");
 
-const checkOtp = require("../utility/twiliocheck");
+const adminmongoose = require('../models/adminschema')
 
-const jwt = require("jsonwebtoken");
+const UserMongoose = require("../models/UserSchema");
+
+const checkOtp = require("../utility/twiliocheck");
 
 const user = {
   UserSignup: async (req, res) => {
@@ -21,8 +23,24 @@ const user = {
         Verified: { $in: [true] },
       });
 
-      if (alreadyuser) {
-        res.json({ otpsend: false, message: "Already Exist Phone number" });
+      if (alreadyuser.FullName === FullName) {
+        return res.json({
+          otpsend: false,
+          message: "Already Exist username",
+          error: true,
+        });
+      } else if (alreadyuser.Email === Email) {
+        return res.json({
+          otpsend: false,
+          message: "Already exist Email",
+          error: true,
+        });
+      } else if (alreadyuser.Phone === Phone) {
+        return res.json({
+          otpsend: false,
+          message: "Already exist Phone number",
+          error: true,
+        });
       } else {
         otp(Phone).then((msg) => {
           res.json({ otpsend: true, message: "otp send successfully" });
@@ -39,7 +57,7 @@ const user = {
         const saveduser = await newuser.save();
       }
     } catch (error) {
-      console.log(error);
+
       res.json({ Error: "Entered value is invalid" });
     }
   },
@@ -54,15 +72,12 @@ const user = {
 
       const statusValue = status.status;
 
-      console.log(statusValue);
 
       if (statusValue === "approved") {
         await UserMongoose.updateMany(
           { Phone: Phone },
           { $set: { Verified: true } }
         );
-
-        console.log("-----------------------------------------update token");
 
         //To find The user from the database
         const tokenFindUser = await UserMongoose.findOne({
@@ -84,7 +99,6 @@ const user = {
         //Now the token is created
         const token = jwt.sign(paylaod, secret_key, { expiresIn: "1h" });
 
-        console.log(tokenFindUser);
 
         //Sending the response to frontend
 
@@ -104,66 +118,77 @@ const user = {
     }
   },
 
-  finduser: async (req, res) => {
-    try {
-      const user = req.body.username;
+  // finduser: async (req, res) => {
+  //   try {
+  //     const user = req.body.username;
 
-      const realuser = await UserMongoose.findOne({ FullName: user });
+  //     const realuser = await UserMongoose.findOne({ FullName: user });
+  //     const realadmin = await adminmongoose.findOne({username:user})
 
-      if (realuser) {
-        res.json({ user: true, message: "Hello" });
-      } else {
-        res.json({ user: false, message: "no hello" });
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  },
-  finduserandpassword: async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      console.log(username, password);
+  //     if (realuser || realadmin) {
+  //       res.json({ user: true, message: "Hello" });
+  //     } else {
+  //       res.json({ user: false, message: "no hello" });
+  //     }
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // },
+  
+  // finduserandpassword: async (req, res) => {
+  //   try {
+  //     const { username, password } = req.body;
+  //     console.log(username, password);
 
-      const passwordfind = await UserMongoose.findOne({ FullName: username });
-      console.log(passwordfind);
-      console.log(passwordfind.HPassword);
+  //     const passwordfind = await UserMongoose.findOne({ FullName: username });
+  //     const adminfind = await adminmongoose.findOne({username});
 
-      if (passwordfind) {
-        const result = await bcrypt.compare(password, passwordfind.HPassword);
-        console.log(result);
-        if (result) {
-          res.json({ result: true, message: "correct" });
-          return;
-        } else {
-          res.json({ result: false, message: "Incorrect password" });
-          return;
-        }
+  //     console.log(adminfind.User);
+  //     if (passwordfind.User === 'user') {
+  //       const result = await bcrypt.compare(password, adminfind.password);
+  //       console.log(result);
+  //       if (result) {
+  //         res.json({ result: true, message: "correct" });
+  //         return;
+  //       } else {
+  //         res.json({ result: false, message: "Incorrect password" });
+  //         return;
+  //       }
+  //     }else if(adminfind.User === 'admin'){
 
-        // {
-      } else {
-        res.json({ user: false, message: "User not found" });
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  },
+  //       const result = await bcrypt.compare(password, passwordfind.HPassword);
+  //       console.log(result);
+  //       if (result) {
+  //         res.json({ result: true, message: "correct" });
+  //         return;
+  //       } else {
+  //         res.json({ result: false, message: "Incorrect password" });
+  //         return;
+  //       }
+  //     }
+  //      else {
+  //       res.json({ user: false, message: "User not found" });
+  //     }
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // },
 
   loginpostuser: async (req, res) => {
     try {
-      console.log("-----------------------------------------");
-      console.log(req.body);
+      
       const { username, password } = req.body.data;
 
-      console.log(username);
 
       const usersearch = await UserMongoose.findOne({ FullName: username });
 
-      console.log(usersearch);
+      const adminsreach = await adminmongoose.findOne({username})
 
-      if (usersearch) {
+
+      if (usersearch && usersearch.User === 'user') {
+
         const passcheck = await bcrypt.compare(password, usersearch.HPassword);
 
-        console.log(passcheck);
         if (passcheck) {
           const secret_key = process.env.secret_key;
 
@@ -184,11 +209,37 @@ const user = {
             user: usersearch.User,
           });
         }
-      } else {
+      }else if(adminsreach && adminsreach.User === 'admin'){
+
+        const passcheck = await bcrypt.compare(password, adminsreach.password);
+
+        if (passcheck) {
+          const secret_key = process.env.secret_key;
+
+          const paylaod = {
+            _id: adminsreach._id,
+            fullname: adminsreach.username,
+            userType: adminsreach.User,
+          };
+           //Now the token is created
+           const token = jwt.sign(paylaod, secret_key, { expiresIn: "1h" });
+
+           //sending the responses to frontend with the token
+           return res.json({
+             message: "Login successful",
+             token,
+             login: true,
+             user: adminsreach.User,
+           });
+
+        }
+
+
+      }else {
         return res.json({ message: "Data is not Reached ", login: false });
       }
     } catch (error) {
-      console.log(error);
+  
     }
   },
 };

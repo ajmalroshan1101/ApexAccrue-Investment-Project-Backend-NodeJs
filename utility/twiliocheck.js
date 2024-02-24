@@ -9,8 +9,6 @@ const checkOtp = async function (Phone, OTP) {
       .services(`${serviceSid}`)
       .verificationChecks.create({ to: `+91${Phone}`, code: `${OTP}` })
       .then((verification_check) => {
-        console.log(verification_check);
-        console.log(".............................................................check otp");
         const status = verification_check;
         resolve(status);
       })

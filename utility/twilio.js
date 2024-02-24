@@ -1,7 +1,5 @@
 const twilio = require('twilio');
 
-
-
 const otpgenerate = async function (phone) {
 
     console.log(phone);

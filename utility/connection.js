@@ -4,8 +4,6 @@ module.exports = (app) => {
   mongoose
     .connect(
         'mongodb://localhost:27017/apexaccrue'
-        ? 'mongodb://localhost:27017/apexaccrue'
-        : ""
     )
     .then((data) => {
       app.listen(process.env.PORT || 8500);
